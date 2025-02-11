@@ -2,19 +2,16 @@ name: CI/CD with CodeQL
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+    types: [closed]
 
 jobs:
   codeql-build-and-publish:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -24,11 +21,9 @@ jobs:
 
       - name: Publish CodeQL Pack inside the docker container
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app codeql-runner bash -c "
+          docker run -e GITHUB_TOKEN='${{ secrets.GITHUB_TOKEN }}' --rm -v ${{ github.workspace }}:/app codeql-runner bash -c "
             cd /app/zeta-protocol-checks && \
             codeql pack install && \
             codeql pack create -v . && \
-            echo '${{ secrets.GITHUB_TOKEN }}' > /tmp/token.txt && \
-            codeql pack publish --github-auth-stdin < /tmp/token.txt && \
-            rm -f /tmp/token.txt
+            codeql pack publish
           "
